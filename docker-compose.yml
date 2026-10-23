@@ -1,0 +1,65 @@
+version: '3.8'
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+
+volumes:
+  pg_data:
+  pgadmin_data:
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: crm_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: SecurePassword123!
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend-net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: crm_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@crm.local
+      PGADMIN_DEFAULT_PASSWORD: StrongAdminPass2026!
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - frontend-net
+      - backend-net
+
+  app:
+    build:
+      context: ./app
+    container_name: crm_app
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://crm_user:SecurePassword123!@db:5432/crm_db
+    depends_on:
+      - db
+    networks:
+      - frontend-net
+      - backend-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: crm_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+      - pgadmin
+    networks:
+      - frontend-net
